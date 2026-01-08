@@ -7,7 +7,7 @@ st.set_page_config(page_title="Bank Churn Predictor", layout="wide")
 st.title("Bank Churn Prediction System")
 st.write("Advanced analytics for customer churn prediction and data drift monitoring.")
 
-API_URL = os.getenv("API_URL1", "https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io/streamlit")
+API_URL = os.getenv("API_URL1", "https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io")
 
 # Tabs pour naviguer entre sections
 tab1, tab2 = st.tabs(["Churn Prediction", "Drift Detection"])

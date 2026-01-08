@@ -113,3 +113,9 @@ def drift(simulate: bool = False):
 
     result = run_report(reference, current)
     return result
+
+@app.get("/streamlit")
+def streamlit_app():
+    """Run the Streamlit app for a more interactive experience."""
+    os.system("streamlit run streamlit/streamlit_app.py &")
+    return {"message": "Streamlit app is starting. Access it at /streamlit"}
