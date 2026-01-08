@@ -63,7 +63,7 @@ docker-compose logs -f mlflow
 
 Services disponibles:
 - API: https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io
-- Streamlit: http://localhost:8501
+- Streamlit: https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io/streamlit
 - MLflow: http://localhost:5000
 
 ### Option 2: Python Local
