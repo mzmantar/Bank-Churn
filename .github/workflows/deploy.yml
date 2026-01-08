@@ -115,7 +115,7 @@ jobs:
               --target-port 8000 \
               --cpu 0.5 \
               --memory 1.0Gi \
-              --env-vars API_PORT=8000 MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}" DATABASE_URL=sqlite:///./mlflow.db LOG_LEVEL=INFO API_URL=https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io streamlit run streamlit/streamlit_app.py
+              --env-vars API_PORT=8000 MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}" DATABASE_URL=sqlite:///./mlflow.db LOG_LEVEL=INFO API_URL=https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io
           fi
 
       - name: Health check

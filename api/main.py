@@ -91,7 +91,7 @@ def home():
     index_path = FRONTEND_DIR / "index.html"
     if not index_path.exists():
         return "<h1>Bank Churn Prediction API</h1><p>API is running. Use /docs for API docs.</p>"
-    api_url = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+    api_url = os.getenv("API_URL", "https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io").rstrip("/")
     with open(index_path, "r", encoding="utf-8") as f:
         html = f.read()
 

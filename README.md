@@ -27,7 +27,7 @@ bank-churn-mlops-azure/
 - Endpoint POST `/predict` - Prédiction
 - Endpoint GET `/health` - Santé du service
 - Endpoint GET `/` - Interface web
-- Documentation interactive: http://localhost:8000/docs
+- Documentation interactive: https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io/docs
 
 ### 2. Streamlit (Port 8501)
 - Interface utilisateur interactive
@@ -62,7 +62,7 @@ docker-compose logs -f mlflow
 ```
 
 Services disponibles:
-- API: http://localhost:8000
+- API: https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io
 - Streamlit: http://localhost:8501
 - MLflow: http://localhost:5000
 
@@ -113,7 +113,7 @@ Variables d'environnement dans `.env`:
 ```dotenv
 # API Configuration
 API_PORT=8000
-API_URL=http://localhost:8000
+API_URL=https://bank-churn.proudhill-33366174.germanywestcentral.azurecontainerapps.io
 
 # Streamlit Configuration
 STREAMLIT_PORT=8501
