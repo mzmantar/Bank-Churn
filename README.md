@@ -1,4 +1,4 @@
-# Bank Churn MLOps
+# Bank Churn
 
 Application complète pour prédire le churn bancaire avec FastAPI, Streamlit et MLflow.
 
