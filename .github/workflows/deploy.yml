@@ -14,8 +14,7 @@ env:
   LA_WORKSPACE_NAME: la-bank-churn
   CCA_ENV_NAME: cca-env
   PYTHON_VERSION: '3.12'
-    # LOCATION est déterminée dynamiquement par le script
-    # LOCATION: westeurope
+  LOCATION: germanywestcentral
 
 jobs:
   build-and-deploy:
@@ -69,31 +68,13 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+
       - name: Ensure Container App exists and deploy
         run: |
           set -e
           IMAGE_TAG=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-
-          # Détection automatique de la première région autorisée
-          ALLOWED_LOCATIONS=$(az policy assignment list \
-            --query "[?parameters.listOfAllowedLocations.value].parameters.listOfAllowedLocations.value[]" \
-            -o tsv 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' | sort -u || true)
-          if [ -z "$ALLOWED_LOCATIONS" ]; then
-            ALLOWED_LOCATIONS=$(az account list-locations \
-              --query "[?metadata.regionType=='Physical'].name" \
-              -o tsv | tr -d '\r' | tr '[:upper:]' '[:lower:]' | sort -u)
-          fi
-          PREFERRED_REGIONS="francecentral germanywestcentral swedencentral uksouth northeurope eastus2 eastus westus3 canadacentral centralus westeurope"
-          LOCATION=""
-          for r in $PREFERRED_REGIONS; do
-            if echo "$ALLOWED_LOCATIONS" | grep -qx "$r"; then
-              LOCATION="$r"
-              break
-            fi
-          done
-          # Si aucune région préférée n'est autorisée, prendre la première région autorisée
-          LOCATION="${LOCATION:-$(echo "$ALLOWED_LOCATIONS" | head -n1)}"
-          echo "✅ Région sélectionnée : $LOCATION"
+          LOCATION=${{ env.LOCATION }}
+          echo "✅ Région forcée : $LOCATION"
 
           # Vérifier/créer Log Analytics workspace
           if ! az monitor log-analytics workspace show --resource-group "${{ env.RESOURCE_GROUP }}" --workspace-name "${{ env.LA_WORKSPACE_NAME }}" >/dev/null 2>&1; then
