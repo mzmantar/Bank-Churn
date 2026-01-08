@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bank-churn-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./model:/app/model
+      - ./data:/app/data
+    depends_on:
+      - mlflow
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command: python -m uvicorn api.main:app --host 0.0.0.0 --port 8000 --reload
+
+  streamlit:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: bank-churn-streamlit
+    ports:
+      - "${STREAMLIT_PORT:-8501}:8501"
+    environment:
+      - API_URL=http://api:8000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./streamlit:/app/streamlit
+    depends_on:
+      api:
+        condition: service_healthy
+    command: streamlit run streamlit/streamlit_app.py --server.port=8501 --server.address=0.0.0.0 --logger.level=error
+
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: bank-churn-mlflow
+    ports:
+      - "${MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow_artifacts:/mlflow/artifacts
+      - mlflow_db:/mlflow
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri sqlite:////mlflow/mlflow.db --default-artifact-root /mlflow/artifacts --serve-artifacts
+
+volumes:
+  mlflow_artifacts:
+    driver: local
+  mlflow_db:
+    driver: local
+
+networks:
+  default:
+    name: bank-churn-network
+    driver: bridge

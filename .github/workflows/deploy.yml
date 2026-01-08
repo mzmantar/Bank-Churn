@@ -1,0 +1,149 @@
+name: CI/CD Pipeline - Bank Churn MLOps
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: bank-churn
+  CONTAINER_APP_NAME: bank-churn
+  RESOURCE_GROUP: Bank-Churn
+  LA_WORKSPACE_NAME: la-bank-churn
+  CCA_ENV_NAME: cca-env
+  PYTHON_VERSION: '3.12'
+    # LOCATION est déterminée dynamiquement par le script
+    # LOCATION: westeurope
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # Suppression de la step qui force la région à West Europe
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check if model exists
+        id: check_model
+        run: |
+          if [ -f "model/model.pkl" ]; then
+            echo "model_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "model_exists=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Model not found - skipping API tests"
+          fi
+
+      - name: Validate Python imports
+        run: |
+          python -c "from api.main import app; print('✅ API imports OK')"
+          python -c "import drift; print('✅ Drift module OK')"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        run: |
+          IMAGE_TAG=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          IMAGE_TAG_SHA=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker build -t $IMAGE_TAG -t $IMAGE_TAG_SHA .
+          docker push $IMAGE_TAG
+          docker push $IMAGE_TAG_SHA
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Ensure Container App exists and deploy
+        run: |
+          set -e
+          IMAGE_TAG=${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+          # Détection automatique de la première région autorisée
+          ALLOWED_LOCATIONS=$(az policy assignment list \
+            --query "[?parameters.listOfAllowedLocations.value].parameters.listOfAllowedLocations.value[]" \
+            -o tsv 2>/dev/null | tr -d '\r' | tr '[:upper:]' '[:lower:]' | sort -u || true)
+          if [ -z "$ALLOWED_LOCATIONS" ]; then
+            ALLOWED_LOCATIONS=$(az account list-locations \
+              --query "[?metadata.regionType=='Physical'].name" \
+              -o tsv | tr -d '\r' | tr '[:upper:]' '[:lower:]' | sort -u)
+          fi
+          PREFERRED_REGIONS="francecentral germanywestcentral swedencentral uksouth northeurope eastus2 eastus westus3 canadacentral centralus westeurope"
+          LOCATION=""
+          for r in $PREFERRED_REGIONS; do
+            if echo "$ALLOWED_LOCATIONS" | grep -qx "$r"; then
+              LOCATION="$r"
+              break
+            fi
+          done
+          # Si aucune région préférée n'est autorisée, prendre la première région autorisée
+          LOCATION="${LOCATION:-$(echo "$ALLOWED_LOCATIONS" | head -n1)}"
+          echo "✅ Région sélectionnée : $LOCATION"
+
+          # Vérifier/créer Log Analytics workspace
+          if ! az monitor log-analytics workspace show --resource-group "${{ env.RESOURCE_GROUP }}" --workspace-name "${{ env.LA_WORKSPACE_NAME }}" >/dev/null 2>&1; then
+            az monitor log-analytics workspace create \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --workspace-name "${{ env.LA_WORKSPACE_NAME }}" \
+              --location "$LOCATION"
+          fi
+          LOGS_CUSTOMER_ID=$(az monitor log-analytics workspace show --resource-group "${{ env.RESOURCE_GROUP }}" --workspace-name "${{ env.LA_WORKSPACE_NAME }}" --query customerId -o tsv)
+          LOGS_KEY=$(az monitor log-analytics workspace get-shared-keys --resource-group "${{ env.RESOURCE_GROUP }}" --workspace-name "${{ env.LA_WORKSPACE_NAME }}" --query primarySharedKey -o tsv)
+
+          # Vérifier/créer l'environnement Container Apps
+          if ! az containerapp env show --name "${{ env.CCA_ENV_NAME }}" --resource-group "${{ env.RESOURCE_GROUP }}" >/dev/null 2>&1; then
+            az containerapp env create \
+              --name "${{ env.CCA_ENV_NAME }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --logs-workspace-id "$LOGS_CUSTOMER_ID" \
+              --logs-workspace-key "$LOGS_KEY" \
+              --location "$LOCATION"
+          fi
+
+          # Vérifier/créer le Container App
+          if az containerapp show --name "${{ env.CONTAINER_APP_NAME }}" --resource-group "${{ env.RESOURCE_GROUP }}" >/dev/null 2>&1; then
+            echo "Container App exists — updating image"
+            az containerapp update \
+              --name "${{ env.CONTAINER_APP_NAME }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --image "$IMAGE_TAG" \
+              --set-env-vars API_PORT=8000 MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}" DATABASE_URL=sqlite:///./mlflow.db LOG_LEVEL=INFO
+          else
+            echo "Container App not found — creating environment and container app"
+            az containerapp create \
+              --name "${{ env.CONTAINER_APP_NAME }}" \
+              --resource-group "${{ env.RESOURCE_GROUP }}" \
+              --environment "${{ env.CCA_ENV_NAME }}" \
+              --image "$IMAGE_TAG" \
+              --ingress external \
+              --target-port 8000 \
+              --cpu 0.5 \
+              --memory 1.0Gi \
+              --env-vars API_PORT=8000 MLFLOW_TRACKING_URI="${{ secrets.MLFLOW_TRACKING_URI }}" DATABASE_URL=sqlite:///./mlflow.db LOG_LEVEL=INFO
+          fi
+
+      - name: Health check
+        run: |
+          FQDN=$(az containerapp show \
+            --name ${{ env.CONTAINER_APP_NAME }} \
+            --resource-group ${{ env.RESOURCE_GROUP }} \
+            --query properties.configuration.ingress.fqdn -o tsv)
+          
+          echo "🌐 Testing: https://$FQDN/health"
+          sleep 30
+          curl -f https://$FQDN/health || echo "⚠️ Health check failed"

@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Bank Churn Prediction</title>
+  <style>
+    :root{
+      --bg:#f8fafc;
+      --card:#ffffff;
+      --muted:#64748b;
+      --text:#1e293b;
+      --accent:#3b82f6;
+      --accent2:#10b981;
+      --accent3:#f59e0b;
+      --border:#e2e8f0;
+      --shadow: 0 10px 30px rgba(15,23,42,.12);
+      --shadow-lg: 0 20px 50px rgba(15,23,42,.15);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #8b9dc3 0%, #6b7d8f 100%);
+      color:var(--text);
+      padding: 28px;
+    }
+    .wrap{
+      width: min(1100px, 100%);
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 24px;
+    }
+    @media (max-width: 860px){
+      .wrap{grid-template-columns:1fr}
+    }
+    .card{
+      background: var(--card);
+      border:1px solid var(--border);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 32px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover{
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+    }
+    .title{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 16px;
+    }
+    .title h1{
+      font-size: 28px;
+      margin:0;
+      letter-spacing: -0.5px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .badge{
+      font-size: 11px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: none;
+      color: #fff;
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sub{
+      margin: 0 0 24px 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 520px){
+      .grid{grid-template-columns:1fr}
+    }
+    label{
+      display:block;
+      font-size: 13px;
+      color: var(--text);
+      margin: 0 0 8px 0;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    input, select{
+      width:100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 2px solid var(--border);
+      background: #f1f5f9;
+      color: var(--text);
+      outline:none;
+      font-size: 14px;
+      transition: all 0.3s ease;
+    }
+    input:focus, select:focus{
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+    .actions{
+      display:flex;
+      gap:12px;
+      margin-top: 28px;
+    }
+    button{
+      border:none;
+      cursor:pointer;
+      border-radius: 12px;
+      padding: 13px 20px;
+      font-weight: 600;
+      width:100%;
+      font-size: 14px;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .btn-primary{
+      background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+      color:#fff;
+      box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+    }
+    .btn-primary:hover:not(:disabled){
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
+    }
+    .btn-ghost{
+      background: #f1f5f9;
+      color: var(--text);
+      border: 2px solid var(--border);
+    }
+    .btn-ghost:hover:not(:disabled){
+      background: #e2e8f0;
+      border-color: var(--accent);
+    }
+    .btn-primary:disabled{
+      opacity:.65;
+      cursor:not-allowed;
+    }
+
+    .side h2{
+      margin: 0 0 16px 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .result{
+      border:1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+    }
+    .row{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 14px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .value{
+      color: var(--text);
+      font-weight: 700;
+      font-size: 15px;
+    }
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border:2px solid var(--border);
+      background: #fff;
+      font-size: 13px;
+      margin-top: 14px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,.08);
+    }
+    .dot{
+      width:12px;height:12px;border-radius:50%;
+      background: var(--muted);
+    }
+    .dot.ok{ background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.4); }
+    .dot.warn{ background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+    .dot.bad{ background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.4); }
+
+    .bar{
+      height: 14px;
+      border-radius: 999px;
+      background: #e2e8f0;
+      overflow:hidden;
+      border: none;
+      margin-top: 14px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,.06);
+    }
+    .bar > div{
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+      transition: width .4s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border-radius: 999px;
+    }
+    .hint{
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 14px;
+      line-height:1.6;
+    }
+    .hint ul{
+      margin: 8px 0 0 20px;
+      padding: 0;
+    }
+    .hint li{
+      margin: 4px 0;
+    }
+    .error{
+      color: #991b1b;
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      padding: 12px 16px;
+      border-radius: 12px;
+      margin-top: 14px;
+      display:none;
+      font-size: 13px;
+      white-space: pre-wrap;
+      font-weight: 500;
+    }
+    .small{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 12px;
+    }
+    code{color:#3b82f6; font-weight: 600; font-size: 13px;}
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <!-- LEFT: FORM -->
+    <div class="card">
+      <div class="title">
+        <h1>Bank Churn Prediction</h1>
+        <span class="badge">Prediction Engine</span>
+      </div>
+      <p class="sub">
+        Enter customer information and click <b>Predict</b>.
+        The system will send a request to <code>POST /predict</code> and display the churn risk.
+      </p>
+
+      <div class="grid">
+        <div>
+          <label>Age</label>
+          <input id="age" type="number" value="40" min="0" step="1">
+        </div>
+        <div>
+          <label>Credit Score</label>
+          <input id="credit_score" type="number" value="650" min="0" step="1">
+        </div>
+
+        <div>
+          <label>Balance</label>
+          <input id="balance" type="number" value="5000" min="0" step="1">
+        </div>
+        <div>
+          <label>Tenure (years)</label>
+          <input id="tenure" type="number" value="5" min="0" step="1">
+        </div>
+
+        <div>
+          <label>Products</label>
+          <input id="products" type="number" value="2" min="0" step="1">
+        </div>
+        <div>
+          <label>Is Active</label>
+          <select id="is_active">
+            <option value="1" selected>1 (Active)</option>
+            <option value="0">0 (Not active)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="btn" onclick="predict()">Predict</button>
+        <button class="btn-ghost" onclick="resetForm()">Reset</button>
+      </div>
+
+      <div class="error" id="err"></div>
+      <div class="small">Tip: You can take a screenshot of this page + result for reference.</div>
+    </div>
+
+    <!-- RIGHT: RESULT -->
+    <div class="card side">
+      <h2>Result</h2>
+
+      <div class="result">
+        <div class="row">
+          <span>Status</span>
+          <span class="value" id="status">—</span>
+        </div>
+        <div class="row">
+          <span>Churn</span>
+          <span class="value" id="churn">—</span>
+        </div>
+        <div class="row">
+          <span>Probability</span>
+          <span class="value" id="prob">—</span>
+        </div>
+
+        <div class="bar" title="Probability">
+          <div id="barFill"></div>
+        </div>
+
+        <div class="pill" id="riskPill">
+          <span class="dot" id="dot"></span>
+          <span id="riskText">Pending...</span>
+        </div>
+
+        <div class="hint">
+          Simple interpretation:
+          <ul>
+            <li><b>&lt; 0.33</b> : low risk</li>
+            <li><b>0.33 – 0.66</b> : medium risk</li>
+            <li><b>&gt; 0.66</b> : high risk</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// API base URL is injected by backend; fallback to current origin
+const API_URL = (window.API_URL || "__API_URL__" || window.location.origin).replace(/\/$/, "");
+
+function resetForm(){
+  document.getElementById("age").value = 40;
+  document.getElementById("credit_score").value = 650;
+  document.getElementById("balance").value = 5000;
+  document.getElementById("tenure").value = 5;
+  document.getElementById("products").value = 2;
+  document.getElementById("is_active").value = 1;
+
+  setResult("—","—","—",0);
+  hideError();
+}
+
+function showError(msg){
+  const el = document.getElementById("err");
+  el.style.display = "block";
+  el.textContent = msg;
+}
+function hideError(){
+  const el = document.getElementById("err");
+  el.style.display = "none";
+  el.textContent = "";
+}
+
+function setResult(status, churn, probText, prob){
+  document.getElementById("status").textContent = status;
+  document.getElementById("churn").textContent = churn;
+  document.getElementById("prob").textContent = probText;
+
+  const pct = Math.max(0, Math.min(1, prob)) * 100;
+  document.getElementById("barFill").style.width = pct.toFixed(0) + "%";
+
+  const dot = document.getElementById("dot");
+  const riskText = document.getElementById("riskText");
+
+  dot.className = "dot";
+  if (prob < 0.33){
+    dot.classList.add("ok");
+    riskText.textContent = "Low risk";
+  } else if (prob < 0.66){
+    dot.classList.add("warn");
+    riskText.textContent = "Medium risk";
+  } else {
+    dot.classList.add("bad");
+    riskText.textContent = "High risk";
+  }
+}
+
+async function predict(){
+  hideError();
+  const btn = document.getElementById("btn");
+  btn.disabled = true;
+  btn.textContent = "Predicting...";
+
+  try{
+    const data = {
+      age: Number(document.getElementById("age").value),
+      credit_score: Number(document.getElementById("credit_score").value),
+      balance: Number(document.getElementById("balance").value),
+      tenure: Number(document.getElementById("tenure").value),
+      products: Number(document.getElementById("products").value),
+      is_active: Number(document.getElementById("is_active").value)
+    };
+
+    const response = await fetch(`${API_URL}/predict`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(data)
+    });
+
+    if(!response.ok){
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}\n${text}`);
+    }
+
+    const result = await response.json();
+    const prob = Number(result.churn_probability);
+    setResult("OK", result.churn, prob.toFixed(4), prob);
+
+  } catch(e){
+    setResult("ERROR","—","—",0);
+    showError(String(e));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Predict";
+  }
+}
+
+// init
+resetForm();
+</script>
+</body>
+</html>
